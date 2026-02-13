@@ -4,113 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <title>DiegoFi Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{--bg:#0B0D14;--card:#13151E;--input:#1A1D27;--bdr:#1E2030;--t1:#F1F5F9;--t5:#64748B;--ac:#22D3EE;--gn:#34D399;--rd:#FF6B6B}
-        body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t1);margin:0;display:flex;flex-direction:column;height:100vh}
-        #app{flex:1;display:flex;flex-direction:column;padding:16px;overflow-y:auto}
-        .loading-screen{display:flex;justify-content:center;align-items:center;height:100vh;color:var(--ac);font-weight:bold}
-        .hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;margin-bottom:20px}
-        .logo{font-size:22px;font-weight:800;color:var(--ac)}
+        :root{--bg:#0B0D14;--card:#13151E;--input:#1A1D27;--bdr:#1E2030;--t1:#F1F5F9;--t5:#64748B;--ac:#22D3EE;--gn:#34D399;--rd:#FF6B6B;--pu:#818CF8}
+        body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t1);margin:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+        #app{flex:1;padding:16px;overflow-y:auto;padding-bottom:100px}
+        .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .logo{font-size:22px;font-weight:800;background:linear-gradient(135deg,var(--ac),var(--pu));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
         .cd{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--bdr);margin-bottom:12px}
-        .nav{height:70px;background:var(--card);display:flex;justify-content:space-around;align-items:center;border-top:1px solid var(--bdr)}
-        .nb{background:none;border:none;color:var(--t5);font-size:12px;font-weight:600}
+        .nav{position:fixed;bottom:0;left:0;right:0;height:75px;background:rgba(19,21,30,0.95);backdrop-filter:blur(10px);display:flex;justify-content:space-around;align-items:center;border-top:1px solid var(--bdr);z-index:100}
+        .nb{background:none;border:none;color:var(--t5);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center}
         .nb.on{color:var(--ac)}
-        .btn-sync{padding:8px 12px;border-radius:8px;background:var(--input);border:1px solid var(--bdr);color:var(--t1);font-size:12px;cursor:pointer}
+        .fab{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,var(--ac),var(--pu));color:#fff;font-size:30px;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(34,211,238,0.3);margin-top:-30px;transition:0.2s}
+        .fab:active{transform:scale(0.9)}
+        .mo{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:flex-end;z-index:1000}
+        .mbox{background:var(--card);width:100%;padding:24px;border-radius:24px 24px 0 0;border-top:1px solid var(--bdr)}
+        .inp{width:100%;padding:14px;background:var(--input);border:1px solid var(--bdr);border-radius:12px;color:#fff;margin-bottom:12px;font-size:16px;outline:none}
+        .btn-s{width:100%;padding:16px;border-radius:12px;border:none;font-weight:800;background:var(--ac);color:var(--bg);font-size:16px}
+        .sync-btn{font-size:10px;padding:6px 10px;border-radius:8px;background:var(--input);border:1px solid var(--bdr);color:var(--t1)}
+        .row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px}
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="loading-screen">Iniciando DiegoFi...</div>
-    </div>
-
-    <script src="https://accounts.google.com/gsi/client" onload="googleLoaded = true" async defer></script>
+    <div id="app"></div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script>
-let googleLoaded = false;
 const GC = '1029204241098-s89a2jdmfjfbcmev4qgped8phnh971n2.apps.googleusercontent.com';
-
-// Estado de la App
 let S = {
     transactions: [],
-    recurring: [],
     view: 'dashboard',
-    month: new Date().getMonth(),
-    cur: 'MXN',
-    gdOk: false
+    modal: false,
+    gdOk: false,
+    categories: {
+        expense: [{id:'pollo_c',name:'Compra Pollo',icon:'🍗'},{id:'personal',name:'Personal',icon:'👤'},{id:'serv',name:'Servicios',icon:'💡'}],
+        income: [{id:'pollo_v',name:'Venta Pollo',icon:'💰'},{id:'trading',name:'Trading',icon:'📈'}]
+    }
 };
-
-// Intentar cargar datos locales para que no se vea negro mientras sincroniza
-function loadLocal() {
-    const saved = localStorage.getItem('diegofi_backup');
-    if (saved) S = JSON.parse(saved);
-    render();
-}
 
 function render() {
     const app = document.getElementById('app');
+    const totals = calculateTotals();
     
-    // Si llegamos aquí, la pantalla negra DEBE desaparecer
     app.innerHTML = `
         <div class="hdr">
             <div class="logo">DiegoFi</div>
-            <button class="btn-sync" onclick="startSync()">
-                ${S.gdOk ? '🟢 Sincronizado' : '⚪ Conectar Drive'}
-            </button>
+            <button class="sync-btn" onclick="startSync()">${S.gdOk ? '🟢 Conectado' : '⚪ Sincronizar'}</button>
         </div>
 
         <div class="cd">
-            <div style="font-size:12px;color:var(--t5)">BALANCE DEL MES</div>
-            <div style="font-size:28px;font-weight:800">$${calculateBalance().toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--t5);letter-spacing:1px">BALANCE ACTUAL</div>
+            <div style="font-size:32px;font-weight:800">$${totals.balance.toLocaleString()}</div>
         </div>
 
-        <div id="content">
-            ${S.view === 'dashboard' ? renderDashboard() : renderRecurring()}
-        </div>
-
-        <div class="nav">
-            <button class="nb ${S.view==='dashboard'?'on':''}" onclick="changeView('dashboard')">INICIO</button>
-            <button class="nb ${S.view==='rec'?'on':''}" onclick="changeView('rec')">FIJOS</button>
-        </div>
-    `;
-}
-
-function renderDashboard() {
-    return `
         <div class="cd">
-            <div style="color:var(--gn)">Ingresos Semanales: $${calculateWeekly(true)}</div>
-            <div style="color:var(--rd)">Gastos Semanales: $${calculateWeekly(false)}</div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:10px;color:var(--t5)">REPORTE SEMANAL</div>
+            <div class="row"><span>Ingresos</span><span style="color:var(--gn)">+$${totals.wIn.toLocaleString()}</span></div>
+            <div class="row"><span>Gastos</span><span style="color:var(--rd)">-$${totals.wOut.toLocaleString()}</span></div>
         </div>
-        <p style="text-align:center;color:var(--t5)">Presiona el botón "+" para registrar.</p>
-    `;
-}
 
-function renderRecurring() {
-    return `<h3>Pagos Fijos</h3><p>Próximamente...</p>`;
-}
-
-function calculateBalance() {
-    return S.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
-}
-
-function calculateWeekly(isIncome) {
-    return 0; // Lógica simplificada para el test
-}
-
-function changeView(v) { S.view = v; render(); }
-
-function startSync() {
-    if (!googleLoaded) return alert("Cargando conexión con Google... intenta en 5 segundos.");
-    // Aquí iría la lógica de Google que ya configuraste
-    alert("Iniciando conexión...");
-}
-
-// Iniciar
-setTimeout(() => {
-    loadLocal();
-}, 500);
-
-</script>
-</body>
-</html>
+        <div style="margin-top:20px">
+            <h4 style="font-size:12px;color:var(--t5);margin-bottom:10px">ÚLTIMOS MOVIMIENTOS</h4>
+            ${S.transactions.slice(-5).reverse().map(t => `
+                <div class="cd" style="padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
