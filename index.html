@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>DiegoFi</title>
+    <style>
+        body{background:#0B0D14;color:#F1F5F9;font-family:sans-serif;margin:0;padding:20px;text-align:center}
+        .btn{background:#22D3EE;color:#0B0D14;padding:15px;border-radius:10px;border:none;font-weight:bold;width:100%;margin-bottom:10px;font-size:16px}
+        .card{background:#13151E;padding:20px;border-radius:15px;border:1px solid #1E2030;margin-bottom:20px}
+        #lista{text-align:left;font-size:14px}
+    </style>
+</head>
+<body>
+    <h2 style="color:#22D3EE">DiegoFi Pro</h2>
+    
+    <div class="card">
+        <div style="font-size:12px;color:#64748B">BALANCE TOTAL</div>
+        <div id="balance" style="font-size:32px;font-weight:bold">$0</div>
+    </div>
+
+    <button class="btn" onclick="nuevo('income')">+ Ingreso (Venta Pollo/Trading)</button>
+    <button class="btn" style="background:#FF6B6B" onclick="nuevo('expense')">+ Gasto (Compra/Personal)</button>
+
+    <div id="lista"></div>
+
+    <script>
+        let datos = JSON.parse(localStorage.getItem('diegofi_v3') || '[]');
+
+        function nuevo(tipo) {
+            let monto = prompt("¿Cuánto es el monto?");
+            if (monto) {
+                let nota = prompt("¿Nota o detalle?");
+                datos.push({tipo, monto: parseFloat(monto), nota, fecha: new Date().toLocaleDateString()});
+                guardar();
+            }
+        }
+
+        function guardar() {
+            localStorage.setItem('diegofi_v3', JSON.stringify(datos));
+            render();
+        }
+
+        function render() {
+            let total = 0;
+            let html = '';
+            datos.forEach(t => {
+                if(t.tipo === 'income') total += t.monto;
+                else total -= t.monto;
+                html += `<div class="card" style="padding:10px;margin-bottom:5px">
+                            <b>${t.tipo === 'income' ? '🟢' : '🔴'} $${t.monto}</b> - ${t.nota} <br>
+                            <small>${t.fecha}</small>
+                         </div>`;
+            });
+            document.getElementById('balance').innerText = '$' + total.toLocaleString();
+            document.getElementById('lista').innerHTML = html;
+        }
+
+        render();
+    </script>
+</body>
+</html>
